@@ -171,6 +171,11 @@ mod tests {
     use crate::bors::command::BorsCommand;
     use crate::github::CommitSha;
 
+    fn get_command_prefix() -> String {
+        dotenv::dotenv().ok();
+        std::env::var("CMD_PREFIX").unwrap()
+    }
+
     #[test]
     fn no_commands() {
         let cmds = parse_commands(r#"Hi, this PR looks nice!"#);
@@ -179,14 +184,16 @@ mod tests {
 
     #[test]
     fn missing_command() {
-        let cmds = parse_commands("@bors");
+        let command_prefix = get_command_prefix();
+        let cmds = parse_commands(&command_prefix);
         assert_eq!(cmds.len(), 1);
         assert!(matches!(cmds[0], Err(CommandParseError::MissingCommand)));
     }
 
     #[test]
     fn unknown_command() {
-        let cmds = parse_commands("@bors foo");
+        let command = format!("{} foo", get_command_prefix());
+        let cmds = parse_commands(&command);
         assert_eq!(cmds.len(), 1);
         assert!(matches!(
             cmds[0],
@@ -196,7 +203,8 @@ mod tests {
 
     #[test]
     fn parse_arg_no_value() {
-        let cmds = parse_commands("@bors ping a=");
+        let command = format!("{} ping a=", get_command_prefix());
+        let cmds = parse_commands(&command);
         assert_eq!(cmds.len(), 1);
         assert!(matches!(
             cmds[0],
@@ -206,48 +214,58 @@ mod tests {
 
     #[test]
     fn parse_duplicate_key() {
-        let cmds = parse_commands("@bors ping a=b a=c");
+        let command = format!("{} ping a=b a=c", get_command_prefix());
+        let cmds = parse_commands(&command);
         assert_eq!(cmds.len(), 1);
         assert!(matches!(cmds[0], Err(CommandParseError::DuplicateArg("a"))));
     }
 
     #[test]
     fn parse_ping() {
-        let cmds = parse_commands("@bors ping");
+        let command = format!("{} ping", get_command_prefix());
+        let cmds = parse_commands(&command);
         assert_eq!(cmds.len(), 1);
         assert!(matches!(cmds[0], Ok(BorsCommand::Ping)));
     }
 
     #[test]
     fn parse_ping_unknown_arg() {
-        let cmds = parse_commands("@bors ping a");
+        let command = format!("{} ping a", get_command_prefix());
+        let cmds = parse_commands(&command);
         assert_eq!(cmds.len(), 1);
         assert!(matches!(cmds[0], Ok(BorsCommand::Ping)));
     }
 
     #[test]
+
     fn parse_command_multiline() {
-        let cmds = parse_commands(
+        let command = format!(
             r#"
 line one
-@bors try
-line two
-"#,
+{} try
+line two"#,
+            get_command_prefix()
         );
+        let cmds = parse_commands(&command);
         assert_eq!(cmds.len(), 1);
         assert!(matches!(cmds[0], Ok(BorsCommand::Try { parent: None })));
     }
 
     #[test]
     fn parse_try() {
-        let cmds = parse_commands("@bors try");
+        let command = format!("{} try", get_command_prefix());
+        let cmds = parse_commands(&command);
         assert_eq!(cmds.len(), 1);
         assert!(matches!(cmds[0], Ok(BorsCommand::Try { parent: None })));
     }
 
     #[test]
     fn parse_try_parent() {
-        let cmds = parse_commands("@bors try parent=ea9c1b050cc8b420c2c211d2177811e564a4dc60");
+        let command = format!(
+            "{} try parent=ea9c1b050cc8b420c2c211d2177811e564a4dc60",
+            get_command_prefix()
+        );
+        let cmds = parse_commands(&command);
         assert_eq!(cmds.len(), 1);
         assert_eq!(
             cmds[0],
@@ -261,7 +279,8 @@ line two
 
     #[test]
     fn parse_try_parent_invalid() {
-        let cmds = parse_commands("@bors try parent=foo");
+        let command = format!("{} try parent=foo", get_command_prefix());
+        let cmds = parse_commands(&command);
         assert_eq!(cmds.len(), 1);
         insta::assert_debug_snapshot!(cmds[0], @r###"
         Err(
@@ -274,37 +293,42 @@ line two
 
     #[test]
     fn parse_try_unknown_arg() {
-        let cmds = parse_commands("@bors try a");
+        let command = format!("{} try a", get_command_prefix());
+        let cmds = parse_commands(&command);
         assert_eq!(cmds.len(), 1);
         assert!(matches!(cmds[0], Err(CommandParseError::UnknownArg("a"))));
     }
 
     #[test]
     fn parse_try_unknown_kv_arg() {
-        let cmds = parse_commands("@bors try a=b");
+        let command = format!("{} try a=b", get_command_prefix());
+        let cmds = parse_commands(&command);
         assert_eq!(cmds.len(), 1);
         assert!(matches!(cmds[0], Err(CommandParseError::UnknownArg("a"))));
     }
 
     #[test]
     fn parse_try_with_rust_timer() {
-        let cmds = parse_commands(
+        let command = format!(
             r#"
-@bors try @rust-timer queue
-"#,
+{} try @rust-timer queue
+        "#,
+            get_command_prefix()
         );
+        let cmds = parse_commands(&command);
         assert_eq!(cmds.len(), 1);
         assert!(matches!(cmds[0], Ok(BorsCommand::Try { parent: None })));
     }
 
     #[test]
     fn parse_try_cancel() {
-        let cmds = parse_commands("@bors try cancel");
+        let command = format!("{} try cancel", get_command_prefix());
+        let cmds = parse_commands(&command);
         assert_eq!(cmds.len(), 1);
         assert!(matches!(cmds[0], Ok(BorsCommand::TryCancel)));
     }
 
     fn parse_commands(text: &str) -> Vec<Result<BorsCommand, CommandParseError>> {
-        CommandParser::new("@bors".to_string()).parse_commands(text)
+        CommandParser::new(get_command_prefix()).parse_commands(text)
     }
 }

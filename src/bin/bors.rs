@@ -1,4 +1,4 @@
-use std::net::SocketAddr;
+use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -43,6 +43,12 @@ struct Opts {
     /// Prefix used for bot commands in PR comments.
     #[arg(long, env = "CMD_PREFIX", default_value = "@bors")]
     cmd_prefix: String,
+
+    #[arg(long, env = "BORS_PORT")]
+    port: u16,
+
+    #[arg(long, env = "BORS_HOST", default_value = "127.0.0.1")]
+    host: String,
 }
 
 async fn server(state: ServerState) -> anyhow::Result<()> {
@@ -52,7 +58,9 @@ async fn server(state: ServerState) -> anyhow::Result<()> {
         .route("/github", post(github_webhook_handler))
         .layer(ConcurrencyLimitLayer::new(100))
         .with_state(state);
-    let addr = SocketAddr::from(([0, 0, 0, 0], 8080));
+
+    let opts = Opts::parse();
+    let addr = SocketAddr::from((opts.host.parse::<Ipv4Addr>().unwrap(), opts.port));
 
     axum::Server::bind(&addr)
         .serve(app.into_make_service())

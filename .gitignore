@@ -1,4 +1,9 @@
 target/
 .env*
-bors*.json
 *.pem
+*.db
+
+# Keep these test files
+!bors.__cargo-test.review.json
+!bors.__cargo-test.try.json
+*.json
