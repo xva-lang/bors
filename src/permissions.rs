@@ -116,7 +116,7 @@ struct UserPermissionsResponse {
     github_users: HashSet<String>,
 }
 
-/// Loads users that are allowed to perform try/review from the Rust Team API.
+/// Loads users that are allowed to perform try/review from a local file
 fn load_users_from_team_api(
     repository_name: &str,
     permission: PermissionType,

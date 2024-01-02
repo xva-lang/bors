@@ -62,6 +62,7 @@ itertools = "0.10"
 # Local
 entity = { path = "database/entity" }
 migration = { path = "database/migration" }
+dotenv = "0.15.0"
 
 [dev-dependencies]
 insta = "1.26"

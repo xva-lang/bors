@@ -7,6 +7,7 @@ use axum::routing::post;
 use axum::Router;
 use bors::bors::{BorsContext, CommandParser};
 use clap::Parser;
+use dotenv::dotenv;
 use sea_orm::Database;
 use tokio::task::LocalSet;
 use tower::limit::ConcurrencyLimitLayer;
@@ -120,6 +121,7 @@ fn try_main(opts: Opts) -> anyhow::Result<()> {
 }
 
 fn main() {
+    dotenv().ok();
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .with_target(false)
