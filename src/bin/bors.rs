@@ -78,7 +78,7 @@ fn try_main(opts: Opts) -> anyhow::Result<()> {
 
     let state = runtime.block_on(GithubAppState::load(
         opts.app_id.into(),
-        opts.private_key.into_bytes().into(),
+        std::fs::read(opts.private_key)?.into(),
         db,
     ))?;
     let ctx = BorsContext::new(CommandParser::new(opts.cmd_prefix));

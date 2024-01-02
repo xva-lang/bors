@@ -1,3 +1,4 @@
 target/
 .env*
 bors*.json
+*.pem
