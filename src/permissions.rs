@@ -101,11 +101,9 @@ async fn load_permissions(repo: &GithubRepoName) -> anyhow::Result<UserPermissio
     tracing::info!("Reloading permissions for repository {repo}");
 
     let review_users = load_users_from_team_api(repo.name(), PermissionType::Review)
-        .await
         .map_err(|error| anyhow::anyhow!("Cannot load review users: {error:?}"))?;
 
     let try_users = load_users_from_team_api(repo.name(), PermissionType::Try)
-        .await
         .map_err(|error| anyhow::anyhow!("Cannot load try users: {error:?}"))?;
     Ok(UserPermissions {
         review_users,
@@ -119,7 +117,7 @@ struct UserPermissionsResponse {
 }
 
 /// Loads users that are allowed to perform try/review from the Rust Team API.
-async fn load_users_from_team_api(
+fn load_users_from_team_api(
     repository_name: &str,
     permission: PermissionType,
 ) -> anyhow::Result<HashSet<String>> {
@@ -128,13 +126,38 @@ async fn load_users_from_team_api(
         PermissionType::Try => "try",
     };
 
-    let url = format!("https://team-api.infra.rust-lang.org/v1/permissions/bors.{repository_name}.{permission}.json");
-    let users = reqwest::get(url)
-        .await
-        .and_then(|res| res.error_for_status())
-        .map_err(|error| anyhow::anyhow!("Cannot load users from team API: {error:?}"))?
-        .json::<UserPermissionsResponse>()
-        .await
-        .map_err(|error| anyhow::anyhow!("Cannot deserialize users from team API: {error:?}"))?;
+    let filename = format!(
+        "{}/bors.{repository_name}.{permission}.json",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let users =
+        serde_json::from_str::<UserPermissionsResponse>(&std::fs::read_to_string(filename)?)?;
+
     Ok(users.github_users)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+
+    use super::load_users_from_team_api;
+
+    #[test]
+    fn test_load_users_from_team_api_review() {
+        let users =
+            load_users_from_team_api("__cargo-test", super::PermissionType::Review).unwrap();
+
+        let mut test_case = HashSet::new();
+        test_case.insert("some_user_name".to_string());
+        assert_eq!(users, test_case);
+    }
+
+    #[test]
+    fn test_load_users_from_team_api_try() {
+        let users = load_users_from_team_api("__cargo-test", super::PermissionType::Try).unwrap();
+
+        let mut test_case = HashSet::new();
+        test_case.insert("some_user_name".to_string());
+        assert_eq!(users, test_case);
+    }
 }
